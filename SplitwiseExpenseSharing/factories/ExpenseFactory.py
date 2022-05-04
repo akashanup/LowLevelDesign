@@ -10,19 +10,20 @@ from SplitwiseExpenseSharing.models.User import User
 
 
 class ExpenseFactory:
+    payingUser: User
     expenseType: str
     users: [User]
     totalAmount: float
     expenseAttributes: Optional[Union[int, float]]
 
     @staticmethod
-    def buildExpense(expenseType: str, users: [User], totalAmount: float, expenseAttributes: Optional[Union[int, float]]) -> Expense:
+    def buildExpense(payingUser: User, expenseType: str, users: [User], totalAmount: float, expenseAttributes: Optional[Union[int, float]]) -> Expense:
         if expenseType == ExpenseType.EXACT.value:
-            return Expense(ExactExpense(ExpenseType.EXACT, users, totalAmount, expenseAttributes))
+            return Expense(payingUser, ExactExpense(ExpenseType.EXACT, users, totalAmount, expenseAttributes))
         elif expenseType == ExpenseType.EQUAL.value:
-            return Expense(EqualExpense(ExpenseType.EQUAL, users, totalAmount))
+            return Expense(payingUser, EqualExpense(ExpenseType.EQUAL, users, totalAmount))
         elif expenseType == ExpenseType.PERCENT.value:
-            return Expense(PercentExpense(ExpenseType.PERCENT, users, totalAmount, expenseAttributes))
+            return Expense(payingUser, PercentExpense(ExpenseType.PERCENT, users, totalAmount, expenseAttributes))
         else:
             raise InvalidExpense
 

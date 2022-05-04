@@ -24,7 +24,7 @@ class Splitwise:
 
     def __addExpense(self, payingUser: User, splittingUser: [User], totalAmount: float, expenseType: str,
                      expenseAttributes: [Union[int, float]] = None) -> Expense:
-        expense = ExpenseFactory.buildExpense(expenseType, splittingUser, totalAmount, expenseAttributes)
+        expense = ExpenseFactory.buildExpense(payingUser, expenseType, splittingUser, totalAmount, expenseAttributes)
         self.expenses.append(expense)
         return expense
 
