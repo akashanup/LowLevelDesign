@@ -1,6 +1,6 @@
 from typing import Union, Optional
 
-from SplitwiseExpenseSharing.exceptions.InvalidExpense import InvalidExpense
+from SplitwiseExpenseSharing.exceptions.InvalidExpenseException import InvalidExpenseException
 from SplitwiseExpenseSharing.models.EqualExpense import EqualExpense
 from SplitwiseExpenseSharing.models.ExactExpense import ExactExpense
 from SplitwiseExpenseSharing.models.Expense import Expense
@@ -25,6 +25,6 @@ class ExpenseFactory:
         elif expenseType == ExpenseType.PERCENT.value:
             return Expense(payingUser, PercentExpense(ExpenseType.PERCENT, users, totalAmount, expenseAttributes))
         else:
-            raise InvalidExpense
+            raise InvalidExpenseException
 
 

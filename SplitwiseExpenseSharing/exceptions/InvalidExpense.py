@@ -1,2 +1,0 @@
-class InvalidExpense(Exception):
-    pass

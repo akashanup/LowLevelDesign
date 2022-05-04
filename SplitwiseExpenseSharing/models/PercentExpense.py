@@ -1,4 +1,4 @@
-from SplitwiseExpenseSharing.exceptions.InvalidExpense import InvalidExpense
+from SplitwiseExpenseSharing.exceptions.InvalidExpenseException import InvalidExpenseException
 from SplitwiseExpenseSharing.interfaces.IExpense import IExpense
 from SplitwiseExpenseSharing.models.ExpenseType import ExpenseType
 from SplitwiseExpenseSharing.models.User import User
@@ -16,9 +16,9 @@ class PercentExpense(IExpense):
         self.totalAmount = totalAmount
         self.percentages = percentages
 
-    def split(self) -> dict:
+    def split(self) -> {User: float}:
         if not self.__validateSplit():
-            raise InvalidExpense
+            raise InvalidExpenseException
         expense = {}
         for i in range(len(self.users)):
             expense[self.users[i]] = round(self.totalAmount * (self.percentages[i] / 100.0), 2)

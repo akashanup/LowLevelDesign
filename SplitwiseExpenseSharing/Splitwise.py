@@ -1,20 +1,25 @@
 from typing import Union, Optional
 
-from SplitwiseExpenseSharing.exceptions.InvalidExpense import InvalidExpense
+from SplitwiseExpenseSharing.exceptions.InvalidCommandException import InvalidCommandException
+from SplitwiseExpenseSharing.exceptions.InvalidExpenseException import InvalidExpenseException
+from SplitwiseExpenseSharing.exceptions.InvalidUserException import InvalidUserException
 from SplitwiseExpenseSharing.factories.ExpenseFactory import ExpenseFactory
 from SplitwiseExpenseSharing.models.Account import Account
 from SplitwiseExpenseSharing.models.Expense import Expense
 from SplitwiseExpenseSharing.models.User import User
-from SplitwiseExpenseSharing.services.UserShareService import UserShareService
+from SplitwiseExpenseSharing.models.UserShare import UserShare
+from SplitwiseExpenseSharing.services.UserService import UserService
 
 
 class Splitwise:
     users: dict[str, User]
     expenses: [Optional[Expense]]
+    userShares: [Optional[UserShare]]
 
     def __init__(self):
         self.users = {}
         self.expenses = []
+        self.userShares = []
 
     def addUser(self, userId: str, name: str, email: str, mobile: str) -> None:
         account = Account(userId, name, email, mobile)
@@ -28,57 +33,76 @@ class Splitwise:
         self.expenses.append(expense)
         return expense
 
+    def __addUserShare(self, userShares: [UserShare]) -> None:
+        for userShare in userShares:
+            self.userShares.append(userShare)
+
     @staticmethod
-    def __splitExpense(expense: Expense) -> {User: float}:
-        return expense.type.split()
+    def __splitExpense(expense: Expense) -> [UserShare]:
+        return expense.split()
 
     def __showBalance(self, user: Optional[User] = None) -> None:
         if user:
-            user.showBalance()
+            UserService.showBalance(self.userShares, user)
         else:
             for user in self.users.values():
-                user.showBalance()
-                print()
+                UserService.showBalance(self.userShares, user)
 
     def facilitate(self):
         while True:
-            inp = input().strip().split(' ')
-            if inp[0] == 'Exit':
-                break
-            if inp[0] == 'Show':
-                if len(inp) == 1:
-                    self.__showBalance()
-                else:
+            try:
+                inp = input().strip().split(' ')
+                inp[0] = inp[0].lower()
+                if inp[0] == 'exit':
+                    break
+                if inp[0] == 'show':
+                    if len(inp) == 1:
+                        self.__showBalance()
+                    else:
+                        userId = inp[1]
+                        if userId not in self.users:
+                            raise InvalidUserException
+                        searchedUser = self.users[userId]
+                        self.__showBalance(searchedUser)
+                elif inp[0] == 'expense':
+                    # Find paying user.
                     userId = inp[1]
-                    searchedUser = self.users[userId]
-                    self.__showBalance(searchedUser)
-            else:
-                # Find paying user.
-                userId = inp[1]
-                payingUser = self.users[userId]
+                    if userId not in self.users:
+                        raise InvalidUserException
 
-                # Find total amount.
-                totalAmount = float(inp[2])
+                    payingUser = self.users[userId]
 
-                # Find splitting users.
-                splittingUserCount = int(inp[3])
-                splittingUsers = []
-                inpIdx = 4
-                for i in range(splittingUserCount):
-                    userId = inp[inpIdx]
-                    splittingUsers.append(self.users[userId])
-                    inpIdx += 1
+                    # Find total amount.
+                    totalAmount = float(inp[2])
 
-                # Find expense type
-                expenseType = inp[inpIdx]
-                # Find expense attributes
-                expenseAttributes = [float(_) for _ in inp[inpIdx + 1:]]
-                try:
+                    # Find splitting users.
+                    splittingUserCount = int(inp[3])
+                    splittingUsers = []
+                    inpIdx = 4
+                    for i in range(splittingUserCount):
+                        userId = inp[inpIdx]
+                        if userId not in self.users:
+                            raise InvalidUserException
+                        splittingUsers.append(self.users[userId])
+                        inpIdx += 1
+
+                    # Find expense type
+                    expenseType = inp[inpIdx].lower()
+                    # Find expense attributes
+                    expenseAttributes = [float(_) for _ in inp[inpIdx + 1:]]
                     expense = self.__addExpense(payingUser, splittingUsers, totalAmount, expenseType, expenseAttributes)
-                    splitExpense = self.__splitExpense(expense)
-                    UserShareService.update(payingUser, splitExpense)
-                except InvalidExpense:
-                    print("Invalid Expense. Please Retry!")
+                    userShares = self.__splitExpense(expense)
+                    self.__addUserShare(userShares)
+                else:
+                    raise InvalidCommandException
+            except InvalidExpenseException:
+                print("Invalid Expense. Please Retry!")
+            except InvalidCommandException:
+                print("Invalid Command. Please Retry!")
+            except InvalidUserException:
+                print("Invalid User. Please Retry!")
+            except Exception as e:
+                print("Something went wrong. Please Retry!")
 
 
 splitWise = Splitwise()
