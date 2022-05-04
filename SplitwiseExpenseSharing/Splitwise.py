@@ -3,52 +3,40 @@ from typing import Union, Optional
 from SplitwiseExpenseSharing.exceptions.InvalidExpense import InvalidExpense
 from SplitwiseExpenseSharing.factories.ExpenseFactory import ExpenseFactory
 from SplitwiseExpenseSharing.models.Account import Account
+from SplitwiseExpenseSharing.models.Expense import Expense
 from SplitwiseExpenseSharing.models.User import User
-from SplitwiseExpenseSharing.models.UserExpense import UserExpense
+from SplitwiseExpenseSharing.services.UserShareService import UserShareService
 
 
 class Splitwise:
-    users: [Optional[User]]
-    userExpenses: [Optional[UserExpense]]
+    users: dict[str, User]
+    expenses: [Optional[Expense]]
 
     def __init__(self):
-        self.users = []
-        self.userExpenses = []
+        self.users = {}
+        self.expenses = []
 
     def addUser(self, userId: str, name: str, email: str, mobile: str) -> None:
         account = Account(userId, name, email, mobile)
         user = User(account)
-        self.users.append(user)
+        if userId not in self.users:
+            self.users[userId] = user
 
     def __addExpense(self, payingUser: User, splittingUser: [User], totalAmount: float, expenseType: str,
-                     expenseAttributes: [Union[int, float]] = None) -> None:
+                     expenseAttributes: [Union[int, float]] = None) -> Expense:
         expense = ExpenseFactory.buildExpense(expenseType, splittingUser, totalAmount, expenseAttributes)
-        # Add the expense to the payingUser's expenses because he was a part of it.
-        userExpense = UserExpense(payingUser, expense)
-        self.userExpenses.append(userExpense)
+        self.expenses.append(expense)
+        return expense
 
-        splitExpense = expense.type.split()
-        for user, amount in splitExpense.items():
-            if user is not payingUser:
-                # Add the expense to the user's expenses because he was a part of it.
-                userExpense = UserExpense(user, expense)
-                self.userExpenses.append(userExpense)
-
-                # Since payingUser has paid for this expense so, splitUser must owe an amount to him for this transaction.
-                if payingUser.account.id in user.youOws:
-                    user.youOws[payingUser.account.id] += amount
-                else:
-                    user.youOws[payingUser.account.id] = amount
-                if user.account.id in payingUser.owsYou:
-                    payingUser.owsYou[user.account.id] += amount
-                else:
-                    payingUser.owsYou[user.account.id] = amount
+    @staticmethod
+    def __splitExpense(expense: Expense) -> {User: float}:
+        return expense.type.split()
 
     def __showBalance(self, user: Optional[User] = None) -> None:
         if user:
             user.showBalance()
         else:
-            for user in self.users:
+            for user in self.users.values():
                 user.showBalance()
                 print()
 
@@ -62,20 +50,12 @@ class Splitwise:
                     self.__showBalance()
                 else:
                     userId = inp[1]
-                    searchedUser = None
-                    for user in self.users:
-                        if user.account.id == userId:
-                            searchedUser = user
-                            break
+                    searchedUser = self.users[userId]
                     self.__showBalance(searchedUser)
             else:
                 # Find paying user.
                 userId = inp[1]
-                payingUser = None
-                for user in self.users:
-                    if user.account.id == userId:
-                        payingUser = user
-                        break
+                payingUser = self.users[userId]
 
                 # Find total amount.
                 totalAmount = float(inp[2])
@@ -86,10 +66,7 @@ class Splitwise:
                 inpIdx = 4
                 for i in range(splittingUserCount):
                     userId = inp[inpIdx]
-                    for user in self.users:
-                        if user.account.id == userId:
-                            splittingUsers.append(user)
-                            break
+                    splittingUsers.append(self.users[userId])
                     inpIdx += 1
 
                 # Find expense type
@@ -97,10 +74,11 @@ class Splitwise:
                 # Find expense attributes
                 expenseAttributes = [float(_) for _ in inp[inpIdx + 1:]]
                 try:
-                    self.__addExpense(payingUser, splittingUsers, totalAmount, expenseType, expenseAttributes)
+                    expense = self.__addExpense(payingUser, splittingUsers, totalAmount, expenseType, expenseAttributes)
+                    splitExpense = self.__splitExpense(expense)
+                    UserShareService.update(payingUser, splitExpense)
                 except InvalidExpense:
                     print("Invalid Expense. Please Retry!")
-
 
 
 splitWise = Splitwise()
