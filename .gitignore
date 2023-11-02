@@ -1,4 +1,4 @@
 .idea/*
 temp*.py
 *.pyc
-/.idea/*
+*/.idea/*
